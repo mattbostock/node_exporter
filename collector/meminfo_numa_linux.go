@@ -113,13 +113,17 @@ func getMemInfoNuma() (map[meminfoKey]float64, map[meminfoKey]float64, error) {
 			return nil, nil, err
 		}
 
-		nodeNumber := nodeRE.FindStringSubmatch(node)[1]
+		nodeNumber := nodeRE.FindStringSubmatch(node)
+		if nodeNumber == nil {
+			return nil, nil, fmt.Errorf("device node string didn't match regexp: %s", node)
+		}
+
 		numaStat, err := parseMemInfoNumaStat(file)
 		if err != nil {
 			return nil, nil, err
 		}
 		for k, v := range numaStat {
-			counterInfo[meminfoKey{k, nodeNumber}] = v
+			counterInfo[meminfoKey{k, nodeNumber[1]}] = v
 		}
 	}
 
@@ -173,10 +177,13 @@ func parseMemInfoNumaStat(r io.Reader) (map[string]float64, error) {
 			continue
 		}
 		parts := strings.Fields(string(line))
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("line scan did not return 2 fields: %s", line)
+		}
 
 		fv, err := strconv.ParseFloat(parts[1], 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid value in meminfo: %s", err)
+			return nil, fmt.Errorf("invalid value in numastat: %s", err)
 		}
 
 		numaStat[parts[0]] = fv
